@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dorking Base</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #212121;
+            color: #f0f0f0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        label {
+            font-size: 1.2em;
+        }
+        input {
+            font-size: 1em;
+            padding: 5px;
+            margin-left: 5px;
+        }
+        button {
+            font-size: 1em;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        a {
+            text-decoration: none;
+            color: #69f0ae;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        p {
+            margin: 0;
+        }
+        p.description {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        section {
+            margin-top: 20px;
+            border-top: 1px solid #ccc;
+            padding-top: 20px;
+        }
+        h2 {
+            margin-bottom: 10px;
+        }
+        ul.link-list {
+            margin: 0;
+            padding: 0;
+            list-style-type: none;
+        }
+        ul.link-list li {
+            margin-bottom: 10px;
+        }
+        .hidden { display: none; }
+        #tooltip {
+            position: absolute;
+            background-color: black;
+            color: white;
+            padding: 5px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Google Dorks</h1>
+    <label for="domainInput">Enter a domain:</label>
+    <input type="text" id="domainInput" placeholder="example.com" oninput="updateDomain()">
+    
+    <ul id="dorkList">
+    </ul>
+
+    <script>
+        function updateDomain() {
+            var domainInput = document.getElementById("domainInput").value;
+            var domains = domainInput.split(',').map(domain => domain.trim());
+            var dorkLinks = document.querySelectorAll(".dorkLink");
+
+            dorkLinks.forEach(function(link) {
+                var query = link.dataset.dork;
+                var siteQueries = domains.map(domain => `site:${domain}`).join(' | ');
+                link.href = `https://www.google.com/search?q=${encodeURIComponent(siteQueries)}%20${encodeURIComponent(query)}`;
+                link.textContent = `${siteQueries} ${query}`;
+            });
+        }
+
+        function loadDorks() {
+            fetch('googledork.json', { cache: "no-cache" })
+                .then(response => response.json()) 
+                .then(data => {
+                    var dorkList = document.getElementById('dorkList');
+                    dorkList.innerHTML = ""; 
+
+                    data.forEach(function(item) {
+                        var name = item.name;
+                        var dork = item.dork;
+                            
+                        var li = document.createElement('li');
+                        var p = document.createElement('p');
+                        p.className = 'description';
+                        p.textContent = name;
+                        var a = document.createElement('a');
+                        a.className = 'dorkLink';
+                        a.target = '_blank';
+                        a.dataset.dork = dork;
+                        a.textContent = dork;
+                        li.appendChild(p);
+                        li.appendChild(a);
+                        dorkList.appendChild(li);
+                    });
+
+                    updateDomain(); 
+                })
+                .catch(error => console.error('Error loading dorks:', error));
+        }
+
+        window.onload = loadDorks;
+    </script>
+</body>
+</html>

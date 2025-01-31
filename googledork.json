@@ -1,0 +1,18 @@
+[
+  {
+    "name": "PHP extension w/ parameters",
+    "dork": "ext:php inurl:?"
+  },
+  {
+    "name": "SSRF",
+    "dork": "inurl:http | inurl:url= | inurl:path= | inurl:dest= | inurl:html= | inurl:data= | inurl:domain= | inurl:page= | inurl:redirect= | inurl:callback= | inurl:return= | inurl:link= | inurl:src= | inurl:load= | inurl:out= | inurl:to= | inurl:next= | inurl:referer= | inurl:site= | inurl:host= | inurl:continue= | inurl:open= | inurl:show= | inurl:img= | inurl:image= | inurl:fetch= inurl:&"
+  },
+  {
+    "name": "Login Page",
+    "dork": "inurl:login | inurl:signin | intitle:login | intitle:signin | inurl:secure"
+  },
+  {
+    "name": "Admin panel",
+    "dork": "inurl:admin"
+  }
+]
