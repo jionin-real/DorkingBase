@@ -5,6 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dorking Base</title>
     <style>
+        .sidebar {
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            width: 250px;
+            background: #333;
+            padding: 20px;
+            border-radius: 5px;
+            z-index: 1000;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+        }
+        .sidebar label {
+            color: #4CAF50;
+            margin-bottom: 15px;
+            display: block;
+            font-size: 1.1em;
+        }
+        #dorkFiles {
+            width: 100%;
+            padding: 10px;
+            background: #444;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+
         body {
             font-family: Arial, sans-serif;
             max-width: 800px;
@@ -13,131 +41,196 @@
             color: #f0f0f0;
             padding: 20px;
             box-sizing: border-box;
+            position: relative;
+            margin-left: 320px; 
+        }
+
+        .create-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: background-color 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        .create-button:hover {
+            background-color: #45a049;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
         h1 {
             font-size: 2.5em;
             margin-bottom: 20px;
+            color: #4CAF50;
         }
         label {
             font-size: 1.2em;
+            display: block;
+            margin-bottom: 10px;
         }
         input {
             font-size: 1em;
-            padding: 5px;
-            margin-left: 5px;
-        }
-        button {
-            font-size: 1em;
-            background-color: #4CAF50;
+            padding: 8px 12px;
+            width: 100%;
+            max-width: 400px;
+            background: #333;
             color: white;
-            border: none;
-            padding: 6px 12px;
-            cursor: pointer;
-            margin-left: 5px;
-        }
-        button:hover {
-            background-color: #45a049;
+            border: 1px solid #444;
+            border-radius: 4px;
+            margin-bottom: 20px;
         }
         ul {
             list-style-type: none;
             padding: 0;
         }
         li {
-            margin-bottom: 10px;
+            margin-bottom: 20px;
+            background: #333;
+            padding: 15px;
+            border-radius: 6px;
+            transition: transform 0.2s;
         }
-        a {
+        li:hover {
+            transform: translateX(5px);
+        }
+        a.dorkLink {
             text-decoration: none;
             color: #69f0ae;
+            word-break: break-all;
+            line-height: 1.5;
         }
-        a:hover {
+        a.dorkLink:hover {
             text-decoration: underline;
         }
-        p {
-            margin: 0;
-        }
         p.description {
-            margin-bottom: 5px;
+            margin: 0 0 8px 0;
             font-weight: bold;
+            color: #4CAF50;
         }
-        section {
-            margin-top: 20px;
-            border-top: 1px solid #ccc;
-            padding-top: 20px;
-        }
-        h2 {
-            margin-bottom: 10px;
-        }
-        ul.link-list {
-            margin: 0;
-            padding: 0;
-            list-style-type: none;
-        }
-        ul.link-list li {
-            margin-bottom: 10px;
-        }
-        .hidden { display: none; }
-        #tooltip {
-            position: absolute;
-            background-color: black;
-            color: white;
-            padding: 5px;
-            border-radius: 5px;
+        #domainInput {
+            margin-bottom: 30px;
         }
     </style>
 </head>
 <body>
-    <h1>Google Dorks</h1>
-    <label for="domainInput">Enter a domain:</label>
-    <input type="text" id="domainInput" placeholder="example.com" oninput="updateDomain()">
+    <div class="sidebar">
+        <label for="dorkFiles">Select Dorks File:</label>
+        <select id="dorkFiles"></select>
+    </div>
+
+    <a href="index.html" class="create-button">✎ Create Dorks</a>
+
+    <h1>Google Dorks Manager</h1>
     
+    <label for="domainInput">Enter target domain(s):</label>
+    <input type="text" 
+           id="domainInput" 
+           placeholder="example.com, another.com"
+           oninput="updateDomain()"
+           title="Separate multiple domains with commas">
+
     <ul id="dorkList">
+        <!-- dorks dynamic load -->
     </ul>
 
     <script>
-        function updateDomain() {
-            var domainInput = document.getElementById("domainInput").value;
-            var domains = domainInput.split(',').map(domain => domain.trim());
-            var dorkLinks = document.querySelectorAll(".dorkLink");
+        async function loadDorkFiles() {
+            try {
+                const response = await fetch('/dorks/');
+                const html = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const links = Array.from(doc.querySelectorAll('a[href$=".json"]'));
+                
+                const files = links.map(link => {
+                    const href = link.getAttribute('href');
+                    return href.split('/').pop();
+                });
 
-            dorkLinks.forEach(function(link) {
-                var query = link.dataset.dork;
-                var siteQueries = domains.map(domain => `site:${domain}`).join(' | ');
-                link.href = `https://www.google.com/search?q=${encodeURIComponent(siteQueries)}%20${encodeURIComponent(query)}`;
-                link.textContent = `${siteQueries} ${query}`;
+                const select = document.getElementById('dorkFiles');
+                
+                files.forEach(file => {
+                    const option = new Option(file, file);
+                    select.add(option);
+                });
+
+                if(files.includes('standard.json')) {
+                    select.value = 'standard.json';
+                } else if(files.length > 0) {
+                    select.value = files[0];
+                }
+                
+                loadDorks(select.value || 'standard.json');
+
+                select.addEventListener('change', () => {
+                    loadDorks(select.value || 'standard.json');
+                });
+
+            } catch (error) {
+                console.error('Error loading file list:', error);
+                loadDorks('standard.json');
+            }
+        }
+
+        async function loadDorks(filename) {
+            try {
+                if(!filename) filename = 'standard.json';
+                
+                const response = await fetch(`/dorks/${filename}`, { cache: "no-cache" });
+                const data = await response.json();
+                const dorkList = document.getElementById('dorkList');
+                
+                data.sort((a, b) => a.id - b.id);
+                dorkList.innerHTML = '';
+                
+                data.forEach(item => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <p class="description">${item.id}. ${item.name}</p>
+                        <a class="dorkLink" 
+                           data-dork="${item.dork}" 
+                           target="_blank" 
+                           rel="noopener noreferrer">
+                           ${item.dork}
+                        </a>
+                    `;
+                    dorkList.appendChild(li);
+                });
+
+                updateDomain();
+                
+            } catch (error) {
+                console.error('Error loading dorks:', error);
+                dorkList.innerHTML = '<li style="color: #ff4444">Error loading dorks list</li>';
+            }
+        }
+
+        function updateDomain() {
+            const domainInput = document.getElementById("domainInput").value;
+            const domains = domainInput.split(',')
+                              .map(domain => domain.trim())
+                              .filter(domain => domain.length > 0);
+            
+            const dorkLinks = document.querySelectorAll(".dorkLink");
+            
+            dorkLinks.forEach(link => {
+                const query = link.dataset.dork;
+                const siteQuery = domains.length > 0 
+                    ? `(${domains.map(domain => `site:${domain}`).join(' OR ')})` 
+                    : '';
+                
+                const fullQuery = siteQuery ? `${siteQuery} ${query}` : query;
+                link.href = `https://www.google.com/search?q=${encodeURIComponent(fullQuery)}`;
+                link.textContent = fullQuery;
             });
         }
 
-        function loadDorks() {
-            fetch('googledork.json', { cache: "no-cache" })
-                .then(response => response.json()) 
-                .then(data => {
-                    var dorkList = document.getElementById('dorkList');
-                    dorkList.innerHTML = ""; 
-
-                    data.forEach(function(item) {
-                        var name = item.name;
-                        var dork = item.dork;
-                            
-                        var li = document.createElement('li');
-                        var p = document.createElement('p');
-                        p.className = 'description';
-                        p.textContent = name;
-                        var a = document.createElement('a');
-                        a.className = 'dorkLink';
-                        a.target = '_blank';
-                        a.dataset.dork = dork;
-                        a.textContent = dork;
-                        li.appendChild(p);
-                        li.appendChild(a);
-                        dorkList.appendChild(li);
-                    });
-
-                    updateDomain(); 
-                })
-                .catch(error => console.error('Error loading dorks:', error));
-        }
-
-        window.onload = loadDorks;
+        window.addEventListener('DOMContentLoaded', loadDorkFiles);
     </script>
 </body>
 </html>

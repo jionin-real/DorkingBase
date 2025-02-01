@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dork Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #212121;
+            color: #f0f0f0;
+            padding: 20px;
+            position: relative;
+        }
+        .home-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            cursor: pointer;
+            text-decoration: none;
+            border-radius: 3px;
+        }
+        .home-button:hover {
+            background: #45a049;
+        }
+        .export-import-container {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .import-button, .export-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            cursor: pointer;
+            text-decoration: none;
+            border-radius: 3px;
+        }
+        .export-button:hover, .import-button:hover {
+            background: #45a049;
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        .section {
+            margin-top: 20px;
+            border-top: 1px solid #ccc;
+            padding-top: 20px;
+        }
+        .json-editor {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .dork-list {
+            list-style: none;
+            padding: 0;
+        }
+        .dork-item {
+            background: #333;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        input, textarea {
+            padding: 8px;
+            width: 100%;
+            background: #333;
+            color: white;
+            border: 1px solid #444;
+        }
+        .file-selector {
+            margin-bottom: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+        .dork-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 8px;
+        }
+        .btn-danger {
+            background: #ff4444;
+        }
+        .btn-danger:hover {
+            background: #cc0000;
+        }
+        .btn-edit {
+            background: #ffc107;
+            color: #000;
+        }
+        .btn-edit:hover {
+            background: #e0a800;
+        }
+        #fileList {
+            background: #333;
+            color: #f0f0f0;
+            border: 1px solid #444;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 1em;
+            width: 200px;
+            margin-right: 10px;
+        }
+        #fileList option {
+            background: #333;
+            color: #f0f0f0;
+        }
+        #fileList:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="home-button">Home</a>
+    <div class="export-import-container">
+        <button class="export-button" onclick="exportFile()">Export</button>
+        <button class="import-button" onclick="importFile()">Import</button>
+    </div>
+    
+    <h1>Dork Manager</h1>
+    
+    <div class="section">
+        <div class="file-selector">
+            <select id="fileList"></select>
+            <button onclick="loadSelectedFile()">Load File</button>
+            <button onclick="showNewFileForm()">New File</button>
+            <button class="btn-danger" onclick="deleteFile()">Delete File</button>
+        </div>
+
+        <div id="newFileForm" class="hidden">
+            <input type="text" id="newFileName" placeholder="filename.json">
+            <button onclick="createNewFile()">Create</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="json-editor">
+            <input type="hidden" id="editId" value="">
+            <input type="text" id="dorkName" placeholder="Dork name">
+            <textarea id="dorkContent" placeholder="Dork pattern"></textarea>
+            <button onclick="handleDorkAction()" id="actionButton">Add Dork</button>
+        </div>
+
+        <ul class="dork-list" id="dorkList"></ul>
+    </div>
+
+    <script>
+        let currentFile = null;
+        
+        window.onload = async () => {
+            const response = await fetch('/files');
+            const files = await response.json();
+            const select = document.getElementById('fileList');
+            
+            files.forEach(file => {
+                const option = document.createElement('option');
+                option.value = file;
+                option.textContent = file;
+                select.appendChild(option);
+            });
+        };
+
+        async function loadSelectedFile() {
+            const filename = document.getElementById('fileList').value;
+            const response = await fetch(`/file/${filename}`);
+            currentFile = filename;
+            
+            const data = await response.json();
+            renderDorks(data);
+        }
+
+        async function createNewFile() {
+            const filename = document.getElementById('newFileName').value;
+            if(!filename.endsWith('.json')) {
+                alert('Filename must end with .json');
+                return;
+            }
+
+            const response = await fetch(`/file/${filename}`, {
+                method: 'POST',
+                body: JSON.stringify([])
+            });
+
+            if(response.ok) {
+                location.reload();
+            }
+        }
+
+        async function handleDorkAction() {
+            const id = document.getElementById('editId').value;
+            const name = document.getElementById('dorkName').value;
+            const content = document.getElementById('dorkContent').value;
+            
+            if(id) {
+                await updateDork(id, name, content);
+            } else {
+                await addDork(name, content);
+            }
+        }
+
+        async function addDork(name, content) {
+            const response = await fetch(`/file/${currentFile}`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    name: name,
+                    dork: content
+                })
+            });
+
+            if(response.ok) {
+                resetForm();
+                loadSelectedFile();
+            }
+        }
+
+        async function updateDork(id, name, content) {
+            const response = await fetch(`/dork/${currentFile}/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    name: name,
+                    dork: content
+                })
+            });
+
+            if(response.ok) {
+                resetForm();
+                loadSelectedFile();
+            }
+        }
+
+        async function deleteDork(id) {
+            if(confirm('Are you sure you want to delete this dork?')) {
+                const response = await fetch(`/dork/${currentFile}/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if(response.ok) {
+                    loadSelectedFile();
+                }
+            }
+        }
+
+        async function deleteFile() {
+            if(currentFile && confirm('Delete this file permanently?')) {
+                const response = await fetch(`/file/${currentFile}`, {
+                    method: 'DELETE'
+                });
+                
+                if(response.ok) {
+                    location.reload();
+                }
+            }
+        }
+
+        function editDork(id, name, content) {
+            document.getElementById('editId').value = id;
+            document.getElementById('dorkName').value = name;
+            document.getElementById('dorkContent').value = content;
+            document.getElementById('actionButton').textContent = 'Update Dork';
+        }
+
+        function resetForm() {
+            document.getElementById('editId').value = '';
+            document.getElementById('dorkName').value = '';
+            document.getElementById('dorkContent').value = '';
+            document.getElementById('actionButton').textContent = 'Add Dork';
+        }
+
+        function renderDorks(data) {
+            const list = document.getElementById('dorkList');
+            list.innerHTML = '';
+            
+            data.forEach(dork => {
+                const li = document.createElement('li');
+                li.className = 'dork-item';
+                li.innerHTML = `
+                    <h3>${dork.name}</h3>
+                    <p>${dork.dork}</p>
+                    <div class="dork-actions">
+                        <button class="btn-edit" onclick="editDork('${dork.id}', '${dork.name.replace(/'/g, "\\'")}', '${dork.dork.replace(/'/g, "\\'")}')">Edit</button>
+                        <button class="btn-danger" onclick="deleteDork('${dork.id}')">Delete</button>
+                    </div>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        function showNewFileForm() {
+            document.getElementById('newFileForm').classList.remove('hidden');
+        }
+
+        function exportFile() {
+            if (!currentFile) {
+                alert('No file selected');
+                return;
+            }
+
+            fetch(`/file/${currentFile}`)
+                .then(response => response.json())
+                .then(data => {
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = currentFile;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                })
+                .catch(error => console.error('Error exporting file:', error));
+        }
+
+        function importFile() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (event) => {
+                const file = event.target.files[0];
+                if (file && file.name.endsWith('.json')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const content = e.target.result;
+                        try {
+                            const jsonData = JSON.parse(content);
+                            fetch(`/file/${file.name}`, {
+                                method: 'POST',
+                                body: JSON.stringify(jsonData)
+                            })
+                            .then(response => {
+                                if (response.ok) {
+                                    location.reload();
+                                } else {
+                                    alert('Failed to import file');
+                                }
+                            });
+                        } catch (error) {
+                            alert('Invalid JSON file');
+                        }
+                    };
+                    reader.readAsText(file);
+                } else {
+                    alert('Please select a valid .json file');
+                }
+            };
+            input.click();
+        }
+    </script>
+</body>
+</html>
